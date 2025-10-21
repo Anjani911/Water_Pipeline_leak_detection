@@ -4,6 +4,8 @@ import pandas as pd
 import joblib
 import traceback
 import os
+import json
+from datetime import datetime
 from werkzeug.utils import secure_filename
 
 from utils.blockchain import SimplePrivateBlockchain
@@ -16,15 +18,15 @@ app = Flask(__name__)
 CORS(app)
 
 UPLOAD_FOLDER = "uploads"
+LOG_FILE = "server_log.json"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 print("🚀 Starting Flask app...")
 
 # ------------------------------
 # Load Pre-trained Model
 # ------------------------------
-MODEL_PATH = "leak_detection_model.pkl"  # ✅ your AI model
+MODEL_PATH = "leak_detection_model.pkl"
 
 try:
     model = joblib.load(MODEL_PATH)
@@ -37,6 +39,30 @@ except Exception as e:
 # Initialize Blockchain
 # ------------------------------
 blockchain = SimplePrivateBlockchain()
+
+# ------------------------------
+# Helper: Logging Function
+# ------------------------------
+def log_event(action, username="system", details=None):
+    """Save key actions to server_log.json"""
+    entry = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "action": action,
+        "username": username,
+        "details": details or {}
+    }
+    try:
+        if os.path.exists(LOG_FILE):
+            with open(LOG_FILE, "r") as f:
+                logs = json.load(f)
+        else:
+            logs = []
+
+        logs.append(entry)
+        with open(LOG_FILE, "w") as f:
+            json.dump(logs, f, indent=4)
+    except Exception as e:
+        print(f"⚠️ Logging failed: {e}")
 
 # ------------------------------
 # ROUTES
@@ -74,6 +100,8 @@ def predict():
         prediction = model.predict(numeric_df)[0]
         result = "🚨 Leak Detected" if prediction == 1 else "✅ No Leak Detected"
 
+        log_event("prediction", details={"result": result, "input": data})
+
         return jsonify({
             "prediction": int(prediction),
             "result": result,
@@ -96,31 +124,31 @@ def retrain():
         df = pd.read_csv(file)
         retrain_model(df)
 
+        log_event("retrain_model", details={"file_name": file.filename, "rows": len(df)})
+
         return jsonify({"message": "✅ Model retrained successfully."}), 200
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
-# 🧾 Citizen Leak Report (adds reward)
-@app.route("/report_leak", methods=["POST"])
-def report_leak():
+# 📂 Upload Dataset
+@app.route("/upload_dataset", methods=["POST"])
+def upload_dataset():
     try:
-        data = request.form.to_dict()
-        username = data.get("username", "anonymous")
+        if "file" not in request.files:
+            return jsonify({"error": "No dataset file found"}), 400
 
-        blockchain.add_transaction(
-            sender="System",
-            recipient=username,
-            amount=5,
-            reason="Leak report reward"
-        )
-        block = blockchain.mine_block()
+        file = request.files["file"]
+        filename = secure_filename(file.filename)
+        path = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(path)
+
+        log_event("upload_dataset", details={"file_name": filename, "file_path": path})
 
         return jsonify({
-            "message": "💦 Leak reported successfully.",
-            "block": block,
-            "reward": "5 WaterCoins added"
+            "message": "✅ Dataset uploaded successfully.",
+            "file_path": path
         }), 200
 
     except Exception as e:
@@ -137,8 +165,10 @@ def upload_photo():
 
         photo = request.files["photo"]
         filename = secure_filename(photo.filename)
-        path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        path = os.path.join(UPLOAD_FOLDER, filename)
         photo.save(path)
+
+        log_event("upload_photo", details={"photo_name": filename, "photo_path": path})
 
         return jsonify({
             "message": "📷 Photo uploaded successfully.",
@@ -150,21 +180,27 @@ def upload_photo():
         return jsonify({"error": str(e)}), 500
 
 
-# 📂 Upload New Dataset (Admin)
-@app.route("/upload_dataset", methods=["POST"])
-def upload_dataset():
+# 🧾 Citizen Leak Report (adds blockchain reward)
+@app.route("/report_leak", methods=["POST"])
+def report_leak():
     try:
-        if "file" not in request.files:
-            return jsonify({"error": "No dataset file found"}), 400
+        data = request.form.to_dict()
+        username = data.get("username", "anonymous")
 
-        file = request.files["file"]
-        filename = secure_filename(file.filename)
-        path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        file.save(path)
+        blockchain.add_transaction(
+            sender="System",
+            recipient=username,
+            amount=5,
+            reason="Leak report reward"
+        )
+        block = blockchain.mine_block()
+
+        log_event("report_leak", username=username, details={"block": block})
 
         return jsonify({
-            "message": "✅ Dataset uploaded successfully.",
-            "file_path": path
+            "message": "💦 Leak reported successfully.",
+            "block": block,
+            "reward": "5 WaterCoins added"
         }), 200
 
     except Exception as e:
@@ -177,6 +213,22 @@ def upload_dataset():
 def ledger():
     try:
         return jsonify({"ledger": blockchain.chain}), 200
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+# 🧾 View Logs
+@app.route("/logs", methods=["GET"])
+def view_logs():
+    """Return server activity logs."""
+    try:
+        if not os.path.exists(LOG_FILE):
+            return jsonify({"logs": []}), 200
+
+        with open(LOG_FILE, "r") as f:
+            logs = json.load(f)
+        return jsonify({"logs": logs}), 200
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
