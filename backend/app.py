@@ -208,6 +208,43 @@ def report_leak():
         return jsonify({"error": str(e)}), 500
 
 
+# 🪙 Add Manual Blockchain Transaction (Admin)
+@app.route("/ledger/add", methods=["POST"])
+def add_ledger_entry():
+    """
+    Add manual transaction to blockchain (Admin use).
+    Example JSON:
+    {
+        "sender": "Admin",
+        "recipient": "User123",
+        "amount": 10,
+        "reason": "Bonus reward"
+    }
+    """
+    try:
+        data = request.get_json()
+        sender = data.get("sender", "Admin")
+        recipient = data.get("recipient")
+        amount = int(data.get("amount", 0))
+        reason = data.get("reason", "Manual reward")
+
+        if not recipient:
+            return jsonify({"error": "Recipient is required"}), 400
+
+        blockchain.add_transaction(sender, recipient, amount, reason)
+        block = blockchain.mine_block()
+
+        log_event("manual_transaction", username=sender, details={"block": block})
+
+        return jsonify({
+            "message": "✅ Transaction added successfully.",
+            "block": block
+        }), 200
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 # ⛓️ Get Ledger
 @app.route("/ledger", methods=["GET"])
 def ledger():
