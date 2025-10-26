@@ -10,10 +10,9 @@ from werkzeug.utils import secure_filename
 
 from utils.blockchain import SimplePrivateBlockchain
 from utils.retrain_model import retrain_model
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
 
-# ------------------------------
-# Initialize Flask App
-# ------------------------------
 app = Flask(__name__)
 CORS(app)
 
