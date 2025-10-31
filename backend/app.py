@@ -21,10 +21,7 @@ LOG_FILE = "server_log.json"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 print("🚀 Starting Flask app...")
-
-# ------------------------------
-# Load Pre-trained Model
-# ------------------------------
+#load model
 MODEL_PATH = "leak_detection_model.pkl"
 
 try:
@@ -34,14 +31,10 @@ except Exception as e:
     print("⚠️ Error loading model:", e)
     model = None
 
-# ------------------------------
-# Initialize Blockchain
-# ------------------------------
+#blockchn part
 blockchain = SimplePrivateBlockchain()
 
-# ------------------------------
-# Helper: Logging Function
-# ------------------------------
+#login fn
 def log_event(action, username="system", details=None):
     """Save key actions to server_log.json"""
     entry = {
@@ -63,16 +56,11 @@ def log_event(action, username="system", details=None):
     except Exception as e:
         print(f"⚠️ Logging failed: {e}")
 
-# ------------------------------
-# ROUTES
-# ------------------------------
 
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"message": "💧 Water Leakage Detection Backend is Running"}), 200
 
-
-# 🧠 Predict Leak (AI model)
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
@@ -110,9 +98,7 @@ def predict():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-
-
-# 🔁 Retrain Model (Admin)
+    
 @app.route("/retrain", methods=["POST"])
 def retrain():
     try:
@@ -130,8 +116,6 @@ def retrain():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-
-# 📂 Upload Dataset
 @app.route("/upload_dataset", methods=["POST"])
 def upload_dataset():
     try:
@@ -154,8 +138,6 @@ def upload_dataset():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-
-# 📸 Upload Photo (Citizen proof)
 @app.route("/upload_photo", methods=["POST"])
 def upload_photo():
     try:
@@ -179,7 +161,6 @@ def upload_photo():
         return jsonify({"error": str(e)}), 500
 
 
-# 🧾 Citizen Leak Report (adds blockchain reward)
 @app.route("/report_leak", methods=["POST"])
 def report_leak():
     try:
@@ -206,8 +187,7 @@ def report_leak():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-
-# 🪙 Add Manual Blockchain Transaction (Admin)
+#for manual addition of transaction
 @app.route("/ledger/add", methods=["POST"])
 def add_ledger_entry():
     """
@@ -244,7 +224,6 @@ def add_ledger_entry():
         return jsonify({"error": str(e)}), 500
 
 
-# ⛓️ Get Ledger
 @app.route("/ledger", methods=["GET"])
 def ledger():
     try:
@@ -253,8 +232,6 @@ def ledger():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-
-# 🧾 View Logs
 @app.route("/logs", methods=["GET"])
 def view_logs():
     """Return server activity logs."""
@@ -270,9 +247,6 @@ def view_logs():
         return jsonify({"error": str(e)}), 500
 
 
-# ------------------------------
-# Run App
-# ------------------------------
 if __name__ == "__main__":
     print("✅ Flask app is running...")
     app.run(host="0.0.0.0", port=5000)
