@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import Login from "./pages/Login";
+import CitizenAuth from "./pages/CitizenAuth";
+import AdminAuth from "./pages/AdminAuth";
 import CitizenDashboard from "./pages/CitizenDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
@@ -42,6 +44,8 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="/auth/citizen" element={<CitizenAuth />} />
+            <Route path="/auth/admin" element={<AdminAuth />} />
             <Route
               path="/admin"
               element={

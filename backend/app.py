@@ -1,161 +1,296 @@
+# ============================================================
+# 💧 WATER LEAKAGE DETECTION BACKEND (NO DATABASE VERSION)
+# ============================================================
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import pandas as pd
-import joblib
-import traceback
 import os
 import json
+import joblib
+import pandas as pd
+import traceback
 from datetime import datetime
 from werkzeug.utils import secure_filename
-
+from werkzeug.security import generate_password_hash, check_password_hash
 from utils.blockchain import SimplePrivateBlockchain
 from utils.retrain_model import retrain_model
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
 
+# ------------------------------------------------------------
+# 🔧 Basic Setup
+# ------------------------------------------------------------
 app = Flask(__name__)
 CORS(app)
 
 UPLOAD_FOLDER = "uploads"
 LOG_FILE = "server_log.json"
+USER_FILE = "users.json"
+UPLOAD_RECORDS = "uploads.json"
+LEDGER_FILE = "ledger.json"
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-print("🚀 Starting Flask app...")
-#load model
-MODEL_PATH = "leak_detection_model.pkl"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "model", "leak_detection_model.pkl")
 
 try:
-    model = joblib.load(MODEL_PATH)
-    print(f"✅ Model loaded successfully from {MODEL_PATH}")
+    if not os.path.exists(MODEL_PATH):
+        print(f"⚠️ Model file not found at {MODEL_PATH} (will run without model).")
+        model = None
+    else:
+        model = joblib.load(MODEL_PATH)
+        print(f"✅ Model loaded successfully from {MODEL_PATH}")
 except Exception as e:
     print("⚠️ Error loading model:", e)
     model = None
 
-#blockchn part
 blockchain = SimplePrivateBlockchain()
 
-#login fn
+# ------------------------------------------------------------
+# 🔹 Helper Utilities
+# ------------------------------------------------------------
+def load_json(path, default):
+    if not os.path.exists(path):
+        with open(path, "w") as f:
+            json.dump(default, f, indent=4)
+    with open(path, "r") as f:
+        return json.load(f)
+
+def save_json(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f, indent=4)
+
 def log_event(action, username="system", details=None):
-    """Save key actions to server_log.json"""
-    entry = {
+    logs = load_json(LOG_FILE, [])
+    logs.append({
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "action": action,
         "username": username,
         "details": details or {}
-    }
-    try:
-        if os.path.exists(LOG_FILE):
-            with open(LOG_FILE, "r") as f:
-                logs = json.load(f)
-        else:
-            logs = []
+    })
+    save_json(LOG_FILE, logs)
 
-        logs.append(entry)
-        with open(LOG_FILE, "w") as f:
-            json.dump(logs, f, indent=4)
-    except Exception as e:
-        print(f"⚠️ Logging failed: {e}")
+# ------------------------------------------------------------
+# 🔹 AUTH ENDPOINTS
+# ------------------------------------------------------------
+@app.route("/signup", methods=["POST"])
+def signup():
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+    role = data.get("role", "citizen")
+
+    if not username or not password:
+        return jsonify({"error": "Username and password required"}), 400
+
+    users = load_json(USER_FILE, [])
+    if any(u["username"] == username for u in users):
+        return jsonify({"error": "Username already exists"}), 409
+
+    hashed = generate_password_hash(password)
+    users.append({"username": username, "password": hashed, "role": role, "coins": 0, "reports": 0})
+    save_json(USER_FILE, users)
+    log_event("signup", username, {"role": role})
+    return jsonify({"message": "✅ Signup successful"}), 201
+
+
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+
+    users = load_json(USER_FILE, [])
+    for u in users:
+        if u["username"] == username and check_password_hash(u["password"], password):
+            log_event("login", username)
+            return jsonify({"message": "✅ Login successful", "role": u["role"]}), 200
+    return jsonify({"error": "Invalid credentials"}), 401
 
 
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"message": "💧 Water Leakage Detection Backend is Running"}), 200
 
-@app.route("/predict", methods=["POST"])
-def predict():
-    try:
-        if model is None:
-            return jsonify({"error": "Model not loaded"}), 500
-
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No input data provided"}), 400
-
-        df = pd.DataFrame([data])
-        expected_columns = [
-            "zone_id", "timestamp", "water_supplied_litres",
-            "water_consumed_litres", "flowrate_lps", "pressure_psi",
-            "latitude", "longitude"
-        ]
-
-        missing_cols = [col for col in expected_columns if col not in df.columns]
-        if missing_cols:
-            return jsonify({"error": f"Missing fields: {missing_cols}"}), 400
-
-        numeric_df = df.drop(columns=["zone_id", "timestamp"], errors="ignore")
-
-        prediction = model.predict(numeric_df)[0]
-        result = "🚨 Leak Detected" if prediction == 1 else "✅ No Leak Detected"
-
-        log_event("prediction", details={"result": result, "input": data})
-
-        return jsonify({
-            "prediction": int(prediction),
-            "result": result,
-            "input_data": data
-        }), 200
-
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-    
-@app.route("/retrain", methods=["POST"])
-def retrain():
-    try:
-        file = request.files.get("file")
-        if not file:
-            return jsonify({"error": "No file uploaded"}), 400
-
-        df = pd.read_csv(file)
-        retrain_model(df)
-
-        log_event("retrain_model", details={"file_name": file.filename, "rows": len(df)})
-
-        return jsonify({"message": "✅ Model retrained successfully."}), 200
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-
+# ------------------------------------------------------------
+# 🔹 ADMIN ENDPOINTS
+# ------------------------------------------------------------
 @app.route("/upload_dataset", methods=["POST"])
 def upload_dataset():
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files["file"]
+    filename = secure_filename(file.filename)
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(filepath)
+
+    uploads = load_json(UPLOAD_RECORDS, [])
+    uploads.append({
+        "username": "admin",
+        "filename": filename,
+        "filetype": "dataset",
+        "path": filepath,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    save_json(UPLOAD_RECORDS, uploads)
+
+    log_event("upload_dataset", "admin", {"filename": filename})
+    return jsonify({"message": "✅ Dataset uploaded successfully", "path": filepath})
+
+
+@app.route("/retrain_model", methods=["POST"])
+def retrain_model_endpoint():
     try:
-        if "file" not in request.files:
-            return jsonify({"error": "No dataset file found"}), 400
+        dataset_path = request.json.get("dataset_path")
+        if not os.path.exists(dataset_path):
+            return jsonify({"error": "Dataset not found"}), 404
 
-        file = request.files["file"]
-        filename = secure_filename(file.filename)
-        path = os.path.join(UPLOAD_FOLDER, filename)
-        file.save(path)
-
-        log_event("upload_dataset", details={"file_name": filename, "file_path": path})
-
-        return jsonify({
-            "message": "✅ Dataset uploaded successfully.",
-            "file_path": path
-        }), 200
-
+        retrain_model(dataset_path)
+        log_event("retrain_model", "admin", {"dataset": dataset_path})
+        return jsonify({"message": "✅ Model retrained successfully"})
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/view_reports", methods=["GET"])
+def view_reports():
+    # Dummy data simulation
+    report_data = {
+        "summary": {"total_leaks": 12, "high_risk_areas": 5, "avg_confidence": 0.83},
+        "graph_data": [
+            {"area": "Sector 1", "confidence": 0.9},
+            {"area": "Sector 2", "confidence": 0.85},
+            {"area": "Sector 3", "confidence": 0.6},
+        ],
+        "table_data": [
+            {"id": 1, "location": "Sector 1", "status": "Leak Detected"},
+            {"id": 2, "location": "Sector 2", "status": "Possible Leak"},
+        ]
+    }
+    return jsonify(report_data)
+
+
+@app.route("/ledger", methods=["GET"])
+def view_ledger():
+    ledger = load_json(LEDGER_FILE, [])
+    return jsonify({"ledger": ledger})
+
+
+@app.route("/add_transaction", methods=["POST"])
+def add_transaction():
+    data = request.get_json()
+    sender = data.get("sender")
+    receiver = data.get("receiver")
+    amount = data.get("amount")
+
+    if not all([sender, receiver, amount]):
+        return jsonify({"error": "Missing fields"}), 400
+
+    new_block = blockchain.add_transaction(sender, receiver, amount)
+    ledger = load_json(LEDGER_FILE, [])
+    ledger.append(new_block)
+    save_json(LEDGER_FILE, ledger)
+
+    log_event("add_transaction", "admin", {"sender": sender, "receiver": receiver, "amount": amount})
+    return jsonify({"message": "✅ Transaction added", "block": new_block})
+
+
+@app.route("/logs", methods=["GET"])
+def get_logs():
+    logs = load_json(LOG_FILE, [])
+    return jsonify({"logs": logs})
+
+# ------------------------------------------------------------
+# 🔹 CITIZEN ENDPOINTS
+# ------------------------------------------------------------
+@app.route("/citizen_profile", methods=["GET"])
+def citizen_profile():
+    username = request.args.get("username")
+    users = load_json(USER_FILE, [])
+    user = next((u for u in users if u["username"] == username), None)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    profile = {
+        "username": user["username"],
+        "coins": user["coins"],
+        "reports": user["reports"],
+        "city": "Raipur",
+        "colony": "Shanti Nagar"
+    }
+    return jsonify(profile)
+
 
 @app.route("/upload_photo", methods=["POST"])
 def upload_photo():
+    username = request.form.get("username", "anonymous")
+    if "photo" not in request.files:
+        return jsonify({"error": "No photo provided"}), 400
+
+    photo = request.files["photo"]
+    filename = secure_filename(photo.filename)
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    photo.save(filepath)
+
+    uploads = load_json(UPLOAD_RECORDS, [])
+    uploads.append({
+        "username": username,
+        "filename": filename,
+        "filetype": "photo",
+        "path": filepath,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    save_json(UPLOAD_RECORDS, uploads)
+
+    users = load_json(USER_FILE, [])
+    for u in users:
+        if u["username"] == username:
+            u["reports"] += 1
+            u["coins"] += 5
+    save_json(USER_FILE, users)
+
+    log_event("upload_photo", username, {"filename": filename})
+    return jsonify({"message": "📷 Photo uploaded successfully", "path": filepath})
+
+
+@app.route("/my_reports", methods=["GET"])
+def my_reports():
+    username = request.args.get("username")
+    uploads = load_json(UPLOAD_RECORDS, [])
+    user_reports = [u for u in uploads if u["username"] == username and u["filetype"] == "photo"]
+    return jsonify({"reports": user_reports})
+
+
+@app.route("/my_rewards", methods=["GET"])
+def my_rewards():
+    username = request.args.get("username")
+    users = load_json(USER_FILE, [])
+    user = next((u for u in users if u["username"] == username), None)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    return jsonify({"username": username, "coins": user["coins"]})
+
+# ------------------------------------------------------------
+# 🔹 ML / PREDICTION ENDPOINTS
+# ------------------------------------------------------------
+@app.route("/predict", methods=["POST"])
+def predict():
     try:
-        if "photo" not in request.files:
-            return jsonify({"error": "No photo file found"}), 400
+        if "file" not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+        file = request.files["file"]
+        df = pd.read_csv(file)
+        if not model:
+            return jsonify({"error": "Model not loaded"}), 500
 
-        photo = request.files["photo"]
-        filename = secure_filename(photo.filename)
-        path = os.path.join(UPLOAD_FOLDER, filename)
-        photo.save(path)
-
-        log_event("upload_photo", details={"photo_name": filename, "photo_path": path})
-
-        return jsonify({
-            "message": "📷 Photo uploaded successfully.",
-            "file_path": path
-        }), 200
-
+        predictions = model.predict(df)
+        df["Leak_Prediction"] = predictions.tolist()
+        result = df.to_dict(orient="records")
+        log_event("predict", "admin", {"rows": len(result)})
+        return jsonify({"predictions": result})
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
@@ -164,89 +299,16 @@ def upload_photo():
 @app.route("/report_leak", methods=["POST"])
 def report_leak():
     try:
-        data = request.form.to_dict()
-        username = data.get("username", "anonymous")
-
-        blockchain.add_transaction(
-            sender="System",
-            recipient=username,
-            amount=5,
-            reason="Leak report reward"
-        )
-        block = blockchain.mine_block()
-
-        log_event("report_leak", username=username, details={"block": block})
-
-        return jsonify({
-            "message": "💦 Leak reported successfully.",
-            "block": block,
-            "reward": "5 WaterCoins added"
-        }), 200
-
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-
-#for manual addition of transaction
-@app.route("/ledger/add", methods=["POST"])
-def add_ledger_entry():
-    """
-    Add manual transaction to blockchain (Admin use).
-    Example JSON:
-    {
-        "sender": "Admin",
-        "recipient": "User123",
-        "amount": 10,
-        "reason": "Bonus reward"
-    }
-    """
-    try:
         data = request.get_json()
-        sender = data.get("sender", "Admin")
-        recipient = data.get("recipient")
-        amount = int(data.get("amount", 0))
-        reason = data.get("reason", "Manual reward")
-
-        if not recipient:
-            return jsonify({"error": "Recipient is required"}), 400
-
-        blockchain.add_transaction(sender, recipient, amount, reason)
-        block = blockchain.mine_block()
-
-        log_event("manual_transaction", username=sender, details={"block": block})
-
-        return jsonify({
-            "message": "✅ Transaction added successfully.",
-            "block": block
-        }), 200
+        leaks = data.get("leaks", [])
+        log_event("report_leak", "system", {"count": len(leaks)})
+        return jsonify({"message": f"✅ {len(leaks)} leaks reported successfully"})
     except Exception as e:
-        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-
-@app.route("/ledger", methods=["GET"])
-def ledger():
-    try:
-        return jsonify({"ledger": blockchain.chain}), 200
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/logs", methods=["GET"])
-def view_logs():
-    """Return server activity logs."""
-    try:
-        if not os.path.exists(LOG_FILE):
-            return jsonify({"logs": []}), 200
-
-        with open(LOG_FILE, "r") as f:
-            logs = json.load(f)
-        return jsonify({"logs": logs}), 200
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-
-
+# ------------------------------------------------------------
+# 🚀 Run Server
+# ------------------------------------------------------------
 if __name__ == "__main__":
-    print("✅ Flask app is running...")
-    app.run(host="0.0.0.0", port=5000)
+    print("✅ Flask backend running on http://127.0.0.1:5000")
+    app.run(host="0.0.0.0", port=5000, debug=True)

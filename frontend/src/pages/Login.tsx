@@ -11,10 +11,10 @@ const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = () => {
-    if (!selectedRole) return;
-    login(selectedRole);
-    navigate(selectedRole === "admin" ? "/admin" : "/citizen");
+  // When a role card is clicked, go to the role-specific auth screen
+  const goToAuth = (role: UserRole) => {
+    setSelectedRole(role);
+    navigate(role === "admin" ? "/auth/admin" : "/auth/citizen");
   };
 
   return (
@@ -36,7 +36,7 @@ const Login = () => {
           <h2 className="text-lg font-semibold text-center mb-4">Select Your Role</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <button
-              onClick={() => setSelectedRole("citizen")}
+              onClick={() => goToAuth("citizen")}
               className={`p-6 rounded-xl border-2 transition-all ${
                 selectedRole === "citizen"
                   ? "border-primary bg-primary/5"
@@ -61,7 +61,7 @@ const Login = () => {
             </button>
 
             <button
-              onClick={() => setSelectedRole("admin")}
+              onClick={() => goToAuth("admin")}
               className={`p-6 rounded-xl border-2 transition-all ${
                 selectedRole === "admin"
                   ? "border-primary bg-primary/5"
@@ -87,13 +87,7 @@ const Login = () => {
           </div>
         </div>
 
-        <Button
-          onClick={handleLogin}
-          disabled={!selectedRole}
-          className="w-full h-12 text-base font-semibold water-gradient"
-        >
-          Continue as {selectedRole ? selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1) : "..."}
-        </Button>
+        <div className="mt-4 text-center text-sm text-muted-foreground">Select a role above to continue</div>
       </Card>
     </div>
   );
