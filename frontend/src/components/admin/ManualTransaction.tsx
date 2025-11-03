@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,21 +13,13 @@ import { CheckCircle2, Wallet } from "lucide-react";
 
 const ManualTransaction = () => {
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
   const [result, setResult] = useState<any>(null);
-  const [formData, setFormData] = useState<ManualTransactionData>({
-    username: "",
-    reward: 0,
-    reason: "",
-  });
+  const [formState, setFormState] = useState({ receiver: "", amount: 0, reason: "" });
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === "reward" ? parseFloat(value) || 0 : value,
-    }));
+    setFormState((prev) => ({ ...prev, [name]: name === "amount" ? parseFloat(value as string) || 0 : value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,10 +28,12 @@ const ManualTransaction = () => {
     setResult(null);
 
     try {
-      const response = await api.post("/ledger/add", formData);
+  const sender = user?.username || "admin";
+  const payload = { sender, receiver: formState.receiver, amount: formState.amount };
+  const response = await api.post("/add_transaction", payload);
       setResult(response.data);
       toast.success("Transaction added to blockchain");
-      setFormData({ username: "", reward: 0, reason: "" });
+  setFormState({ receiver: "", amount: 0, reason: "" });
     } catch (error: any) {
       toast.error(error.response?.data?.error || "Failed to add transaction");
       console.error("Transaction error:", error);
@@ -66,13 +61,13 @@ const ManualTransaction = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="receiver">Recipient Username</Label>
             <Input
-              id="username"
-              name="username"
-              value={formData.username}
+              id="receiver"
+              name="receiver"
+              value={formState.receiver}
               onChange={handleChange}
-              placeholder="Enter username"
+              placeholder="Enter recipient username"
               required
             />
           </div>
@@ -81,10 +76,10 @@ const ManualTransaction = () => {
             <Label htmlFor="reward">Reward Amount (Tokens)</Label>
             <Input
               id="reward"
-              name="reward"
+              name="amount"
               type="number"
               step="0.01"
-              value={formData.reward}
+              value={formState.amount}
               onChange={handleChange}
               placeholder="e.g., 10.5"
               required
@@ -96,7 +91,7 @@ const ManualTransaction = () => {
             <Textarea
               id="reason"
               name="reason"
-              value={formData.reason}
+              value={formState.reason}
               onChange={handleChange}
               placeholder="Reason for this transaction..."
               rows={3}

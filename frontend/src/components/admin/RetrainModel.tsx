@@ -34,12 +34,18 @@ const RetrainModel = () => {
     formData.append("file", file);
 
     try {
-      const response = await api.post("/retrain", formData, {
+      // First upload dataset to get a server-side path
+      const uploadResp = await api.post("/upload_dataset", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
-      setResult(response.data);
+
+      const datasetPath = uploadResp.data.path;
+
+      // Then call retrain_model with the dataset_path
+      const retrainResp = await api.post("/retrain_model", { dataset_path: datasetPath });
+      setResult({ ...uploadResp.data, ...retrainResp.data });
       toast.success("Model retrained successfully");
       setFile(null);
     } catch (error: any) {

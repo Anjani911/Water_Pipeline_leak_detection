@@ -1,15 +1,15 @@
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UploadPhotoReport from "@/components/citizen/UploadPhotoReport";
 import ViewLedger from "@/components/citizen/ViewLedger";
-import { Camera, FileText } from "lucide-react";
+import Profile from "@/components/citizen/Profile";
+import { Camera, FileText, User } from "lucide-react";
 
 const CitizenDashboard = () => {
-  const [activeTab, setActiveTab] = useState("report");
+  const [screen, setScreen] = useState<"profile" | "report">("profile");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">{/* pb for bottom nav */}
       <Navbar />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
@@ -19,26 +19,25 @@ const CitizenDashboard = () => {
           </p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 gap-4 h-auto p-1 bg-muted/50">
-            <TabsTrigger value="report" className="gap-2 py-3">
-              <Camera className="w-4 h-4" />
-              <span className="hidden sm:inline">Upload Photo & Report Leak</span>
-            </TabsTrigger>
-            <TabsTrigger value="ledger" className="gap-2 py-3">
-              <FileText className="w-4 h-4" />
-              <span className="hidden sm:inline">View Rewards</span>
-            </TabsTrigger>
-          </TabsList>
+        {screen === "profile" ? (
+          <Profile />
+        ) : (
+          <UploadPhotoReport />
+        )}
+      </div>
 
-          <TabsContent value="report">
-            <UploadPhotoReport />
-          </TabsContent>
-
-          <TabsContent value="ledger">
-            <ViewLedger />
-          </TabsContent>
-        </Tabs>
+      {/* Bottom navigation */}
+      <div className="fixed bottom-4 left-0 right-0 flex justify-center px-4">
+        <div className="max-w-3xl w-full bg-background/90 backdrop-blur rounded-full shadow-lg p-2 flex items-center justify-between">
+          <button onClick={() => setScreen("profile")} className={`flex-1 py-3 px-4 rounded-full text-center transition ${screen === "profile" ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}>
+            <User className="mx-auto" />
+            <div className="text-xs mt-1">Profile</div>
+          </button>
+          <button onClick={() => setScreen("report")} className={`flex-1 py-3 px-4 rounded-full text-center transition ${screen === "report" ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}>
+            <Camera className="mx-auto" />
+            <div className="text-xs mt-1">Report</div>
+          </button>
+        </div>
       </div>
     </div>
   );

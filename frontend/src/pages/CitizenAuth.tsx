@@ -17,9 +17,8 @@ const CitizenAuth = () => {
   const submitLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!username) return toast({ title: "Username required" });
-    // mock login
-    localStorage.setItem("username", username);
-    login("citizen");
+    // mock login — store username via AuthContext
+    login("citizen", username);
     toast({ title: "Logged in", description: `Welcome back, ${username}` });
     navigate("/citizen");
   };
@@ -28,9 +27,8 @@ const CitizenAuth = () => {
     e.preventDefault();
     if (!username) return toast({ title: "Choose a username" });
     // mock signup: save username and auto-login
-    localStorage.setItem("username", username);
+    login("citizen", username);
     toast({ title: "Account created", description: `Welcome, ${username}` });
-    login("citizen");
     navigate("/citizen");
   };
 

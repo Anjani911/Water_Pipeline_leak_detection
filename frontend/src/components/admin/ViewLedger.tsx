@@ -22,8 +22,9 @@ const ViewLedger = () => {
   const fetchLedger = async () => {
     setLoading(true);
     try {
-      const response = await api.get("/ledger");
-      setLedger(response.data.chain || []);
+  const response = await api.get("/ledger");
+  // backend returns { ledger: [...] }
+  setLedger(response.data.ledger || []);
       toast.success("Ledger loaded successfully");
     } catch (error: any) {
       toast.error(error.response?.data?.error || "Failed to fetch ledger");

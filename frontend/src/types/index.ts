@@ -2,6 +2,7 @@ export type UserRole = "admin" | "citizen";
 
 export interface User {
   role: UserRole;
+  username?: string;
 }
 
 export interface LeakPredictionData {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,8 @@ const UploadPhotoReport = () => {
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [username, setUsername] = useState("");
+  const { user } = useAuth();
+  const [username, setUsername] = useState(user?.username || "");
   const [result, setResult] = useState<any>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,8 +45,9 @@ const UploadPhotoReport = () => {
 
     try {
       // Step 1: Upload photo
-      const formData = new FormData();
-      formData.append("photo", file);
+  const formData = new FormData();
+  formData.append("photo", file);
+  formData.append("username", username.trim());
 
       const photoResponse = await api.post("/upload_photo", formData, {
         headers: {
@@ -52,17 +55,17 @@ const UploadPhotoReport = () => {
         },
       });
 
-      // Step 2: Report leak to get blockchain reward
-      const reportResponse = await api.post("/report_leak", {
-        username: username.trim(),
-      });
+      // After upload, fetch updated rewards and reports
+      const rewardsResp = await api.get(`/my_rewards?username=${encodeURIComponent(username.trim())}`);
+      const reportsResp = await api.get(`/my_reports?username=${encodeURIComponent(username.trim())}`);
 
       setResult({
         photo: photoResponse.data,
-        report: reportResponse.data,
+        rewards: rewardsResp.data,
+        reports: reportsResp.data,
       });
 
-      toast.success("Leak reported successfully! You earned 5 WaterCoins! 💧");
+      toast.success("Leak reported successfully! Your rewards have been updated. 💧");
       
       // Reset form
       setFile(null);
@@ -163,17 +166,12 @@ const UploadPhotoReport = () => {
                     <span className="font-semibold">Photo:</span> {result.photo.filename}
                   </p>
                 )}
-                {result.report?.reward !== undefined && (
+                {result.rewards?.coins !== undefined && (
                   <p className="text-lg font-bold text-primary">
-                    💰 Reward: {result.report.reward} WaterCoins
+                    💰 WaterCoins: {result.rewards.coins}
                   </p>
                 )}
-                {result.report?.transaction_hash && (
-                  <p className="text-xs font-mono text-muted-foreground">
-                    <span className="font-semibold">Transaction:</span>{" "}
-                    {result.report.transaction_hash}
-                  </p>
-                )}
+                <p className="text-sm text-muted-foreground">Total reports: {result.reports?.reports?.length ?? "-"}</p>
                 <p className="text-muted-foreground mt-2">
                   Your contribution has been recorded on the blockchain! 
                   Check the "View Rewards" tab to see your updated balance.
