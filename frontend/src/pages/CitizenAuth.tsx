@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+import api from "@/api/api";
 
 const CitizenAuth = () => {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -14,22 +15,34 @@ const CitizenAuth = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const submitLogin = (e: React.FormEvent) => {
+  const submitLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username) return toast({ title: "Username required" });
-    // mock login — store username via AuthContext
-    login("citizen", username);
-    toast({ title: "Logged in", description: `Welcome back, ${username}` });
-    navigate("/citizen");
+  if (!username) return toast.error("Username required");
+    try {
+      const resp = await api.post("/login", { username, password });
+      const role = resp.data.role || "citizen";
+      login(role as any, username);
+      toast.success(`Welcome back, ${username}`);
+      navigate("/citizen");
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Login failed");
+    }
   };
 
-  const submitSignup = (e: React.FormEvent) => {
+  const submitSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username) return toast({ title: "Choose a username" });
-    // mock signup: save username and auto-login
-    login("citizen", username);
-    toast({ title: "Account created", description: `Welcome, ${username}` });
-    navigate("/citizen");
+  if (!username) return toast.error("Choose a username");
+    try {
+      await api.post("/signup", { username, password, role: "citizen" });
+      // auto-login after signup
+      const resp = await api.post("/login", { username, password });
+      const role = resp.data.role || "citizen";
+      login(role as any, username);
+      toast.success(`Account created. Welcome, ${username}`);
+      navigate("/citizen");
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Signup failed");
+    }
   };
 
   return (

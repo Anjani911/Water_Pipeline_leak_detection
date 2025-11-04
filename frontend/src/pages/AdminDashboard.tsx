@@ -5,6 +5,7 @@ import ManualTransaction from "@/components/admin/ManualTransaction";
 import ViewLedger from "@/components/admin/ViewLedger";
 import ViewLogs from "@/components/admin/ViewLogs";
 import Reports from "@/components/admin/Reports";
+import PredictAndReport from "@/components/admin/PredictAndReport";
 import { RefreshCw, BarChart2 } from "lucide-react";
 
 const AdminDashboard = () => {
@@ -24,6 +25,7 @@ const AdminDashboard = () => {
         {screen === "manage" ? (
           <div className="space-y-6">
             <RetrainModel />
+            <PredictAndReport />
             <ViewLedger />
             <ViewLogs />
             <ManualTransaction />
