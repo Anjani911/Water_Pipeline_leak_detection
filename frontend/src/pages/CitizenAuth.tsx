@@ -17,7 +17,7 @@ const CitizenAuth = () => {
 
   const submitLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-  if (!username) return toast.error("Username required");
+    if (!username) return toast.error("Username required");
     try {
       const resp = await api.post("/login", { username, password });
       const role = resp.data.role || "citizen";
@@ -31,10 +31,9 @@ const CitizenAuth = () => {
 
   const submitSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-  if (!username) return toast.error("Choose a username");
+    if (!username) return toast.error("Choose a username");
     try {
       await api.post("/signup", { username, password, role: "citizen" });
-      // auto-login after signup
       const resp = await api.post("/login", { username, password });
       const role = resp.data.role || "citizen";
       login(role as any, username);
@@ -54,8 +53,12 @@ const CitizenAuth = () => {
         </div>
 
         <div className="flex gap-4 justify-center mb-6">
-          <Button variant={mode === "login" ? "default" : "ghost"} onClick={() => setMode("login")}>Login</Button>
-          <Button variant={mode === "signup" ? "default" : "ghost"} onClick={() => setMode("signup")}>Sign up</Button>
+          <Button variant={mode === "login" ? "default" : "ghost"} onClick={() => setMode("login")}>
+            Login
+          </Button>
+          <Button variant={mode === "signup" ? "default" : "ghost"} onClick={() => setMode("signup")}>
+            Sign up
+          </Button>
         </div>
 
         {mode === "login" ? (
