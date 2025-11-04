@@ -1,0 +1,140 @@
+[
+    {
+        "timestamp": "2025-11-04 22:51:48",
+        "action": "signup",
+        "username": "admin",
+        "details": {
+            "role": "admin"
+        }
+    },
+    {
+        "timestamp": "2025-11-04 22:51:48",
+        "action": "login",
+        "username": "admin",
+        "details": {}
+    },
+    {
+        "timestamp": "2025-11-04 22:52:11",
+        "action": "login",
+        "username": "admin",
+        "details": {}
+    },
+    {
+        "timestamp": "2025-11-04 22:53:32",
+        "action": "login",
+        "username": "admin",
+        "details": {}
+    },
+    {
+        "timestamp": "2025-11-04 22:59:05",
+        "action": "login",
+        "username": "admin",
+        "details": {}
+    },
+    {
+        "timestamp": "2025-11-04 23:12:44",
+        "action": "signup",
+        "username": "citizen",
+        "details": {
+            "role": "citizen"
+        }
+    },
+    {
+        "timestamp": "2025-11-04 23:12:45",
+        "action": "login",
+        "username": "citizen",
+        "details": {}
+    },
+    {
+        "timestamp": "2025-11-04 23:13:42",
+        "action": "upload_photo",
+        "username": "citizen",
+        "details": {
+            "filename": "Gemini_Generated_Image_vq1yf3vq1yf3vq1y.png"
+        }
+    },
+    {
+        "timestamp": "2025-11-04 23:14:12",
+        "action": "upload_photo",
+        "username": "citizen",
+        "details": {
+            "filename": "Gemini_Generated_Image_b4r3jib4r3jib4r3.png"
+        }
+    },
+    {
+        "timestamp": "2025-11-04 23:15:45",
+        "action": "login",
+        "username": "admin",
+        "details": {}
+    },
+    {
+        "timestamp": "2025-11-04 23:20:28",
+        "action": "login",
+        "username": "admin",
+        "details": {}
+    },
+    {
+        "timestamp": "2025-11-04 23:20:40",
+        "action": "signup",
+        "username": "admin2",
+        "details": {
+            "role": "admin"
+        }
+    },
+    {
+        "timestamp": "2025-11-04 23:20:40",
+        "action": "login",
+        "username": "admin2",
+        "details": {}
+    },
+    {
+        "timestamp": "2025-11-04 23:21:58",
+        "action": "login",
+        "username": "admin",
+        "details": {}
+    },
+    {
+        "timestamp": "2025-11-04 23:24:23",
+        "action": "login",
+        "username": "admin",
+        "details": {}
+    },
+    {
+        "timestamp": "2025-11-04 23:35:22",
+        "action": "login",
+        "username": "admin",
+        "details": {}
+    },
+    {
+        "timestamp": "2025-11-04 23:35:30",
+        "action": "login",
+        "username": "admin",
+        "details": {}
+    },
+    {
+        "timestamp": "2025-11-04 23:35:38",
+        "action": "login",
+        "username": "citizen",
+        "details": {}
+    },
+    {
+        "timestamp": "2025-11-04 23:37:17",
+        "action": "login",
+        "username": "citizen",
+        "details": {}
+    },
+    {
+        "timestamp": "2025-11-04 23:37:32",
+        "action": "upload_photo",
+        "username": "citizen",
+        "details": {
+            "filename": "Gemini_Generated_Image_vq1yf3vq1yf3vq1y.png"
+        }
+    },
+    {
+        "timestamp": "2025-11-04 23:37:47",
+        "action": "login",
+        "username": "admin",
+        "details": {}
+    }
+]
