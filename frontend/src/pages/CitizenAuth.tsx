@@ -18,13 +18,26 @@ const CitizenAuth = () => {
   const submitLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username) return toast.error("Username required");
+    
+    console.log("🔵 LOGIN ATTEMPT - CitizenAuth");
+    console.log("API Base URL:", import.meta.env.VITE_API_URL);
+    console.log("Username:", username);
+    console.log("Password length:", password?.length);
+    
     try {
+      console.log("📡 Sending POST /login to backend...");
       const resp = await api.post("/login", { username, password });
+      console.log("✅ Login response:", resp.data);
+      
       const role = resp.data.role || "citizen";
       login(role as any, username);
       toast.success(`Welcome back, ${username}`);
       navigate("/citizen");
     } catch (err: any) {
+      console.error("❌ Login failed:", err);
+      console.error("Error response:", err.response?.data);
+      console.error("Error status:", err.response?.status);
+      console.error("Full error:", err.message);
       toast.error(err.response?.data?.error || "Login failed");
     }
   };

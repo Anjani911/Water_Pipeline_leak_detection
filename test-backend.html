@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2563eb; }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #1d4ed8; }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { background: #d1fae5; border-left: 4px solid #10b981; }
+        .error { background: #fee2e2; border-left: 4px solid #ef4444; }
+        .info { background: #dbeafe; border-left: 4px solid #3b82f6; }
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            width: 200px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Backend Connection Test</h1>
+        <p>This tool helps diagnose connection issues between your frontend and backend.</p>
+        
+        <h2>Step 1: Test Backend Health</h2>
+        <button onclick="testHealth()">Test GET /</button>
+        
+        <h2>Step 2: Test Login Endpoint</h2>
+        <div>
+            <input type="text" id="username" placeholder="Username" value="admin">
+            <input type="password" id="password" placeholder="Password" value="">
+            <button onclick="testLogin()">Test POST /login</button>
+        </div>
+        
+        <h2>Step 3: Test CORS</h2>
+        <button onclick="testCORS()">Test CORS Headers</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:5000';
+        
+        function showResult(message, type = 'info') {
+            const result = document.getElementById('result');
+            result.className = `result ${type}`;
+            result.textContent = message;
+        }
+
+        async function testHealth() {
+            showResult('Testing backend health...', 'info');
+            try {
+                const response = await fetch(`${API_URL}/`, {
+                    method: 'GET',
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult(`✅ SUCCESS!\n\nStatus: ${response.status}\nResponse: ${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    showResult(`❌ ERROR\n\nStatus: ${response.status}\nBackend returned an error.`, 'error');
+                }
+            } catch (err) {
+                showResult(`❌ CONNECTION FAILED\n\n${err.message}\n\nPossible causes:\n1. Backend is not running on http://127.0.0.1:5000\n2. CORS is blocking the request\n3. Firewall is blocking port 5000`, 'error');
+            }
+        }
+
+        async function testLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            showResult('Testing login...', 'info');
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(`✅ LOGIN SUCCESS!\n\nStatus: ${response.status}\nResponse: ${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    showResult(`❌ LOGIN FAILED\n\nStatus: ${response.status}\nResponse: ${JSON.stringify(data, null, 2)}\n\nCheck:\n1. Username/password are correct\n2. User exists in backend/users.json`, 'error');
+                }
+            } catch (err) {
+                showResult(`❌ CONNECTION FAILED\n\n${err.message}\n\nBackend is not reachable!`, 'error');
+            }
+        }
+
+        async function testCORS() {
+            showResult('Testing CORS configuration...', 'info');
+            try {
+                const response = await fetch(`${API_URL}/`, {
+                    method: 'OPTIONS',
+                });
+                
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
+                    'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers'),
+                };
+                
+                showResult(`✅ CORS Headers:\n${JSON.stringify(corsHeaders, null, 2)}`, 'success');
+            } catch (err) {
+                showResult(`❌ CORS Test Failed\n\n${err.message}`, 'error');
+            }
+        }
+
+        // Auto-test on load
+        window.onload = () => {
+            showResult('Click a button above to test the backend connection.', 'info');
+        };
+    </script>
+</body>
+</html>

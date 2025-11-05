@@ -1,6 +1,4 @@
-# ============================================================
-# 💧 WATER LEAKAGE DETECTION BACKEND (NO DATABASE VERSION)
-# ============================================================
+
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -97,15 +95,29 @@ def signup():
 
 @app.route("/login", methods=["POST"])
 def login():
+    print("🔵 /login endpoint hit")
     data = request.get_json()
+    print(f"📦 Received data: {data}")
+    
     username = data.get("username")
     password = data.get("password")
+    print(f"👤 Username: {username}, Password length: {len(password) if password else 0}")
 
     users = load_json(USER_FILE, [])
+    print(f"📚 Total users in database: {len(users)}")
+    
     for u in users:
-        if u["username"] == username and check_password_hash(u["password"], password):
-            log_event("login", username)
-            return jsonify({"message": "✅ Login successful", "role": u["role"]}), 200
+        if u["username"] == username:
+            print(f"✅ User '{username}' found in database")
+            if check_password_hash(u["password"], password):
+                print(f"✅ Password verified for '{username}'")
+                log_event("login", username)
+                return jsonify({"message": "✅ Login successful", "role": u["role"]}), 200
+            else:
+                print(f"❌ Password mismatch for '{username}'")
+                return jsonify({"error": "Invalid credentials"}), 401
+    
+    print(f"❌ User '{username}' not found in database")
     return jsonify({"error": "Invalid credentials"}), 401
 
 
@@ -310,5 +322,20 @@ def report_leak():
 # 🚀 Run Server
 # ------------------------------------------------------------
 if __name__ == "__main__":
-    print("✅ Flask backend running on http://127.0.0.1:5000")
+    print("\n" + "="*60)
+    print("💧 WATER LEAKAGE DETECTION BACKEND")
+    print("="*60)
+    print(f"✅ Flask backend running on http://127.0.0.1:5000")
+    print(f"✅ CORS enabled for all origins")
+    print(f"📁 Users file: {USER_FILE}")
+    print(f"📁 Ledger file: {LEDGER_FILE}")
+    print(f"📁 Upload folder: {UPLOAD_FOLDER}")
+    
+    # Load and show user count
+    users = load_json(USER_FILE, [])
+    print(f"👥 Users in database: {len(users)}")
+    for u in users:
+        print(f"   - {u['username']} ({u['role']})")
+    print("="*60 + "\n")
+    
     app.run(host="0.0.0.0", port=5000, debug=True)

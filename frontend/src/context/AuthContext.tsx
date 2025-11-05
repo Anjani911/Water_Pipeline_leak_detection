@@ -13,25 +13,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(() => {
     const storedRole = localStorage.getItem("userRole") as UserRole | null;
     const storedUsername = localStorage.getItem("username") || null;
+    
+    console.log("🔧 AuthContext initializing from localStorage:", {
+      storedRole,
+      storedUsername,
+    });
+    
     if (storedRole) {
-      return { role: storedRole, ...(storedUsername ? { username: storedUsername } : {}) } as User;
+      const initialUser = { role: storedRole, ...(storedUsername ? { username: storedUsername } : {}) } as User;
+      console.log("✅ User restored from localStorage:", initialUser);
+      return initialUser;
     }
+    
+    console.log("⚠️ No user in localStorage, starting with null");
     return null;
   });
 
   const login = (role: UserRole, username?: string) => {
     const newUser: User = { role, ...(username ? { username } : {}) };
+    console.log("🔑 Login called:", newUser);
     setUser(newUser);
     localStorage.setItem("userRole", role);
     if (username) {
       localStorage.setItem("username", username);
     }
+    console.log("💾 User saved to localStorage");
   };
 
   const logout = () => {
+    console.log("🚪 Logout called");
     setUser(null);
     localStorage.removeItem("userRole");
     localStorage.removeItem("username");
+    console.log("🗑️ User cleared from localStorage");
   };
 
   return (

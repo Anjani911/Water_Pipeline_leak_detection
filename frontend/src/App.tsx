@@ -16,14 +16,25 @@ const queryClient = new QueryClient();
 const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode; allowedRole: "admin" | "citizen" }) => {
   const { user } = useAuth();
   
+  console.log("🛡️ ProtectedRoute check:", {
+    user,
+    allowedRole,
+    userRole: user?.role,
+    localStorage_role: localStorage.getItem("userRole"),
+    localStorage_username: localStorage.getItem("username"),
+  });
+  
   if (!user) {
+    console.log("❌ No user found, redirecting to /");
     return <Navigate to="/" replace />;
   }
   
   if (user.role !== allowedRole) {
+    console.log(`❌ Wrong role: expected ${allowedRole}, got ${user.role}`);
     return <Navigate to={user.role === "admin" ? "/admin" : "/citizen"} replace />;
   }
   
+  console.log("✅ Auth check passed, rendering protected content");
   return <>{children}</>;
 };
 
